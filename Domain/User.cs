@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
@@ -20,12 +20,15 @@ namespace Domain
         [Column(TypeName = "varchar(200)")]
         public DateTime CreationDate { get; set; }
         public DateTime ModificationDate { get; set; }
-        
+
         public bool IsEnabled { get; set; }
 
 
-        public Language Language { get; set; }
+        public Language Language { get; set; } 
         
+        [Column(TypeName = "varchar(20)")]
+        public string Role { get; set; } = "user";  // Por defecto será "user"
+
         public ICollection<UserResponse> UserResponses { get; set; }
     }
 
