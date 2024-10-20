@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Model.Request;
 using Model.Response;
 using Domain;
@@ -24,6 +25,7 @@ namespace Controllers
             _context = context;
         }
 
+        // Crear Usuario solo con el rol "user"
         [HttpPost]
         public IActionResult CreateUser([FromBody] UserRequest request)
         {
@@ -51,10 +53,11 @@ namespace Controllers
                 LanguageID = request.LanguageID,
                 Username = request.Username,
                 Email = request.Email,
-                Password = request.Password,
+                Password = request.Password, // Asegúrate de encriptar la contraseña en producción
                 CreationDate = DateTime.Now,
                 ModificationDate = DateTime.Now,
-                IsEnabled = true
+                IsEnabled = true,
+                Role = "user"  // El rol por defecto es "user"
             };
 
             _context.Users.Add(user);
@@ -74,56 +77,7 @@ namespace Controllers
             return CreatedAtAction(nameof(GetUser), new { id = user.UserID }, response);
         }
 
-
-        //[HttpPost("Register")]
-        //public async Task<IActionResult> Register([FromBody] UserRequest userRequest)
-        //{
-        //    // Verificar si el nombre de usuario ya existe
-        //    if (_context.Users.Any(u => u.Username == userRequest.Username))
-        //    {
-        //        var suggestions = GenerateUserNameSuggestions(userRequest.Username);
-        //        return Conflict(new { message = "User name already exists", suggestions });
-        //    }
-
-        //    // Verificar si el correo ya existe
-        //    if (_context.Users.Any(u => u.Email == userRequest.Email))
-        //    {
-        //        return Conflict(new { message = "Email already exists" });
-        //    }
-
-        //    var user = new User
-        //    {
-        //        LanguageID = userRequest.LanguageID,
-        //        Username = userRequest.Username,
-        //        Email = userRequest.Email,
-        //        Password = userRequest.Password, // Asegúrate de encriptar la contraseña en una implementación real
-        //        Role = userRequest.Role
-        //    };
-
-        //    _context.Users.Add(user);
-        //    await _context.SaveChangesAsync();
-
-        //    return Ok(new { message = "User registered successfully" });
-        //}
-
-        //private List<string> GenerateUserNameSuggestions(string userName)
-        //{
-        //    List<string> suggestions = new List<string>();
-        //    int suggestionCount = 0;
-
-        //    while (suggestions.Count < 5)
-        //    {
-        //        string suggestedName = $"{userName}{suggestionCount}";
-        //        if (!_context.Users.Any(u => u.Username == suggestedName))
-        //        {
-        //            suggestions.Add(suggestedName);
-        //        }
-        //        suggestionCount++;
-        //    }
-
-        //    return suggestions;
-        //}
-
+        // Ruta de Login - Generar un JWT token
         [HttpPost("Login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
@@ -137,6 +91,7 @@ namespace Controllers
             return Ok(new { token });
         }
 
+        // Obtener un usuario específico
         [HttpGet("{id}")]
         public IActionResult GetUser(int id)
         {
@@ -157,6 +112,8 @@ namespace Controllers
             return Ok(response);
         }
 
+        // Actualizar usuario (solo "user")
+        [Authorize(Roles = "admin,user")]
         [HttpPut("{id}")]
         public IActionResult UpdateUser(int id, [FromBody] UserRequest request)
         {
@@ -185,18 +142,22 @@ namespace Controllers
             return Ok(response);
         }
 
+        // Eliminar un usuario (Deshabilitar)
+        [Authorize(Roles = "admin")]
         [HttpDelete("{id}")]
         public IActionResult DeleteUser(int id)
         {
             var user = _context.Users.Find(id);
             if (user == null || !user.IsEnabled) return NotFound();
 
-            user.IsEnabled = false;
+            user.IsEnabled = false; // Deshabilitar al usuario en lugar de eliminar
             _context.SaveChanges();
 
             return NoContent();
         }
 
+        // Obtener todos los usuarios habilitados (solo admin)
+        [Authorize(Roles = "admin")]
         [HttpGet]
         public IActionResult GetAllUsers()
         {
@@ -216,6 +177,7 @@ namespace Controllers
             return Ok(users);
         }
 
+        // Generar el JWT token
         private string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -226,15 +188,17 @@ namespace Controllers
                 {
                     new Claim(ClaimTypes.Name, user.UserID.ToString()),
                     new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role)  // Incluimos el rol en el token
                 }),
-                //Expires = DateTime.UtcNow.AddDays(7), // Token expira en 7 días
-                Expires = DateTime.UtcNow.AddMinutes(5), // Token expira en 5 minutos 
+                Expires = DateTime.UtcNow.AddMinutes(5), // Token expira en 5 minutos
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+
+        // Generar sugerencias de nombres de usuario si el existente ya está registrado
         private List<string> GenerateUserNameSuggestions(string existingUserName)
         {
             var suggestions = new List<string>();
@@ -251,6 +215,5 @@ namespace Controllers
 
             return suggestions;
         }
-
     }
 }
