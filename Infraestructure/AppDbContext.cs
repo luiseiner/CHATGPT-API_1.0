@@ -37,7 +37,7 @@ namespace Infraestructure
 
             //var connectionString = Convert.ToString( Configuration.GetSection("ConnectionStrings")["Conexion"]);
 
-            var connectionString = "Data Source=SQL5112.site4now.net;Initial Catalog=db_aada3d_chatgpt;User Id=db_aada3d_chatgpt_admin;Password=Banco2024#; TrustServerCertificate=True;";
+            var connectionString = "Data Source=SQL5106.site4now.net;Initial Catalog=db_aada3d_prueba;User Id=db_aada3d_prueba_admin;Password=torrico...123T; TrustServerCertificate=True;";
 
             if (!optionsBuilder.IsConfigured)
             {
